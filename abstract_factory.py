@@ -69,9 +69,17 @@ class QueryRunner(ABC):
     @abstractmethod
     def get_number(self, configuration: Dict) -> Union[int, float]:
         pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
 
 
 class AbstractQueryRunnerFactory(ABC):
+    @abstractmethod
+    def register_query_runner(self, name: str, query_runner: QueryRunner):
+        pass
 
     @abstractmethod
     def get_query_runner(self, name: str) -> QueryRunner:
@@ -81,12 +89,20 @@ class AbstractQueryRunnerFactory(ABC):
 # Concrete query runner classes for different database implementations
 class MongoDBQueryRunner(QueryRunner):
 
+    @staticmethod
+    def get_name():
+        return 'mongodb'
+
     def get_number(self, configuration: Dict) -> int:
         # Actual implementation code to query MongoDB
         return 1
 
 
 class MySQLQueryRunner(QueryRunner):
+
+    @staticmethod
+    def get_name():
+        return 'mysql'
 
     def get_number(self, configuration: Dict) -> int:
         # Actual implementation code to query MySQL
@@ -95,21 +111,27 @@ class MySQLQueryRunner(QueryRunner):
 
 class BigQueryQueryRunner(QueryRunner):
 
+    @staticmethod
+    def get_name():
+        return 'bigquery'
+
     def get_number(self, configuration: Dict) -> int:
         # Actual implementation code to query BigQuery
         return 3
 
 
 # Concrete factory class for creating database-specific query runners
+# using dependency inversion
 class QueryRunnerFactory(AbstractQueryRunnerFactory):
+    def __init__(self):
+        self._query_runners = {}
+
+    def register_query_runner(self, name: str, query_runner: QueryRunner):
+        self._query_runners[name] = query_runner
 
     def get_query_runner(self, name: str) -> QueryRunner:
-        if name == "mongodb":
-            return MongoDBQueryRunner()
-        elif name == "mysql":
-            return MySQLQueryRunner()
-        elif name == "bigquery":
-            return BigQueryQueryRunner()
+        if name in self._query_runners:
+            return self._query_runners[name]
         else:
             raise ValueError(f"Invalid query runner name: {name}.")
 
@@ -122,7 +144,11 @@ if __name__ == "__main__":
     }
 
     factory = QueryRunnerFactory()
+    factory.register_query_runner(BigQueryQueryRunner.get_name(), BigQueryQueryRunner())
+    factory.register_query_runner(MongoDBQueryRunner.get_name(), MongoDBQueryRunner())
+    factory.register_query_runner(MySQLQueryRunner.get_name(), MySQLQueryRunner())
     query_runner = factory.get_query_runner(query_runner_name)
     result = query_runner.get_number(query_options)
+
     assert result == 3
     print("Query result:", result)
